@@ -1,0 +1,9 @@
+﻿<Application x:Class="Simply.Reactive.Wpf.Tests.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rt="clr-namespace:Simply.Reactive.Wpf.Tests"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <rt:MainWindowViewModel x:Key="MainWindowViewModel" />
+    </Application.Resources>
+</Application>
