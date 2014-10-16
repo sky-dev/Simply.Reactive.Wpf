@@ -32,12 +32,26 @@ namespace Simply.Reactive.Wpf.Xaml
             _uiElementTarget = uiElementTarget;
             _uiElementDependencyProperty = uiElementDependencyProperty;
             _originalBindingInfo = originalBindingInfo;
+            _previousValue = GetDefaultValue(uiElementDependencyProperty);
+            Value = _previousValue;
         }
 
         public object Value
         {
             get { return GetValue(ValueProperty); }
             private set { SetValue(ValueProperty, value); }
+        }
+
+        private static object GetDefaultValue(DependencyProperty dp)
+        {
+            return GetDefaultValue(dp.PropertyType);
+        }
+
+        private static object GetDefaultValue(Type propertyType)
+        {
+            if (propertyType == typeof(string))
+                return string.Empty;
+            return Utility.GetDefaultValue(propertyType);
         }
 
         public BindingExpressionBase BindTo(object viewModelDataSource, PropertyPath viewModelPath)
@@ -107,6 +121,8 @@ namespace Simply.Reactive.Wpf.Xaml
                 ConverterParameter = _originalBindingInfo.ConverterParameter,
                 ValidatesOnDataErrors = _originalBindingInfo.ValidatesOnDataErrors,
                 ValidatesOnExceptions = _originalBindingInfo.ValidatesOnExceptions,
+                UpdateSourceTrigger = _originalBindingInfo.UpdateSourceTrigger,
+                StringFormat = _originalBindingInfo.StringFormat,
                 //Mode = GetBindingMode(boundProperty)
                 Mode = BindingMode.TwoWay
                 //                Mode = observer == null ? BindingMode.OneWay : BindingMode.TwoWay

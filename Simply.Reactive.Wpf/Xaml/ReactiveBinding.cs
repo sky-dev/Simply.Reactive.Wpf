@@ -21,6 +21,8 @@ namespace Simply.Reactive.Wpf.Xaml
         public object ConverterParamter { get; set; }
         public bool ValidatesOnDataErrors { get; set; }
         public bool ValidatesOnExceptions { get; set; }
+        public UpdateSourceTrigger UpdateSourceTrigger { get; set; }
+        public string StringFormat { get; set; }
 
         [TypeConverter(typeof(CultureInfoIetfLanguageTagConverter))]
         public CultureInfo ConverterCulture { get; set; }
@@ -55,7 +57,9 @@ namespace Simply.Reactive.Wpf.Xaml
                 ConverterCulture = ConverterCulture,
                 ConverterParameter = ConverterParamter,
                 ValidatesOnDataErrors = ValidatesOnDataErrors,
-                ValidatesOnExceptions = ValidatesOnExceptions
+                ValidatesOnExceptions = ValidatesOnExceptions,
+                UpdateSourceTrigger = UpdateSourceTrigger,
+                StringFormat = StringFormat
             };
         }
 

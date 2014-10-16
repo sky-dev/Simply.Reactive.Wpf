@@ -20,16 +20,21 @@ namespace Simply.Reactive.Wpf.Xaml
 
         private static Expression CreateInnerSubscribeMethod(Expression observableParam, Expression schedulerParam, Expression onNextParam, Type observableType)
         {
-            var observableTypeParameter = observableType
-                .GetInterfaces()
-                .First(i => i.Name.StartsWith("IObservable"))
-                .GetGenericArguments()
-                .First();            
+            var observableTypeParameter = GetObservableTypeParameter(observableType);
             var convertToObservable = Expression.Convert(observableParam, observableType);
             var onNextDelegateParam = Expression.Parameter(observableTypeParameter);
             var onNextDelegate = Expression.Lambda(Expression.Invoke(onNextParam, Expression.Convert(onNextDelegateParam, typeof(object))), onNextDelegateParam);
             var callObserveOn = Expression.Call(typeof(DispatcherObservable), "ObserveOn", new[] { observableTypeParameter }, convertToObservable, schedulerParam);
             return Expression.Call(typeof(ObservableExtensions), "Subscribe", new[] { observableTypeParameter }, callObserveOn, onNextDelegate);
+        }
+
+        public static Type GetObservableTypeParameter(Type observableType)
+        {
+            return observableType
+                .GetInterfaces()
+                .First(i => i.Name.StartsWith("IObservable"))
+                .GetGenericArguments()
+                .First();  
         }
 
         public static Action<object, object> CreateOnNextMethod(object observer)
@@ -44,13 +49,18 @@ namespace Simply.Reactive.Wpf.Xaml
         private static Expression CreateInnerOnNextMethod(Expression observerParam, Expression valueParam, Type observerType)
         {
             var convertToObserver = Expression.Convert(observerParam, observerType);
-            var observerTypeParameter = observerType
+            var observerTypeParameter = GetObserverTypeParameter(observerType);
+            var valueParam2 = Expression.Convert(valueParam, observerTypeParameter);
+            return Expression.Call(convertToObserver, "OnNext", new Type[0], valueParam2);
+        }
+
+        public static Type GetObserverTypeParameter(Type observerType)
+        {
+            return observerType
                 .GetInterfaces()
                 .First(i => i.Name.StartsWith("IObserver"))
                 .GetGenericArguments()
                 .First();
-            var valueParam2 = Expression.Convert(valueParam, observerTypeParameter);
-            return Expression.Call(convertToObserver, "OnNext", new Type[0], valueParam2);
         }
     }
 }
