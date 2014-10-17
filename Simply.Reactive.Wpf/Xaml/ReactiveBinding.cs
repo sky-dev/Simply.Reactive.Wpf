@@ -40,7 +40,10 @@ namespace Simply.Reactive.Wpf.Xaml
 
         public override object ProvideValue(IServiceProvider serviceProvider)
         {
-            var uiElementBindingInfo = GetUiElementBindingInfo(serviceProvider);
+            var obj = GetUiElementBindingInfo(serviceProvider);
+            var uiElementBindingInfo = obj as UiElementBindingInfo;
+            if (uiElementBindingInfo == null)
+                return obj;
             _proxy = new ReactiveBindingProxy(uiElementBindingInfo.Target, uiElementBindingInfo.DependencyProperty, GetBindingInfo());
             var source = GetSource(uiElementBindingInfo); // TODO - assumes source is DataContext, not always the case
             _bindingInfo = _proxy.BindTo(source, Path);
@@ -65,14 +68,16 @@ namespace Simply.Reactive.Wpf.Xaml
 
         private static object GetSource(UiElementBindingInfo uiElementBindingInfo)
         {
-            return ((FrameworkElement) uiElementBindingInfo.Target).DataContext;
+            return ((FrameworkElement)uiElementBindingInfo.Target).DataContext;
         }
 
-        private UiElementBindingInfo GetUiElementBindingInfo(IServiceProvider serviceProvider)
+        private object GetUiElementBindingInfo(IServiceProvider serviceProvider)
         {
             var valueProvider = serviceProvider.GetService(typeof(IProvideValueTarget)) as IProvideValueTarget;
             if (valueProvider == null)
                 return null;
+            if (valueProvider.TargetObject.GetType().FullName == "System.Windows.SharedDp")
+                return this;
             var bindingTarget = valueProvider.TargetObject as DependencyObject;
             var bindingTargetProperty = valueProvider.TargetProperty as DependencyProperty;
             if (bindingTargetProperty == null || bindingTarget == null)
