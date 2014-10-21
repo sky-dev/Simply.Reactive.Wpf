@@ -73,6 +73,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="TestParentDataSourceViewModel.cs" />
+    <Compile Include="TestDataTemplateViewModel.cs" />
+    <Compile Include="TestParentObservableDataSourceViewModel.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

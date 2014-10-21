@@ -1,44 +1,86 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 
 namespace Simply.Reactive.Wpf.Tests
 {
-    public class MainWindowViewModel
+    public class MainWindowViewModel : INotifyPropertyChanged
     {
-        private bool _isWorking;
-        private readonly ISubject<bool> _isWorking2;
+        private readonly ISubject<bool> _subject;
+        private readonly IDisposable _disposable;
+        private TestParentDataSourceViewModel _testParentDataSource;
 
         public MainWindowViewModel()
         {
-            _isWorking2= new BehaviorSubject<bool>(true);
+            _subject = new BehaviorSubject<bool>(true);
+            _disposable = System.Reactive.Linq.Observable.Return(new TestParentDataSourceViewModel(Observable))
+                .Delay(TimeSpan.FromSeconds(1))
+                .Subscribe(vm => TestParentDataSource = vm);
         }
 
-        public IObservable<bool> IsWorking
+        public IObservable<bool> Observable
         {
-            get { return Observable.Interval(TimeSpan.FromSeconds(1)).Select(_ =>
-                {
-//                    _isWorking = !_isWorking;
-//                    _isWorking2.OnNext(_isWorking);
-                    return DateTime.Now.TimeOfDay.Seconds % 2 == 1;
-                }); }
+            get { return OncePerSecond().Select(GetTime).Select(AreSecondsOdd); }
+        }
+        public IObservable<string> ObservableDescription
+        {
+            get { return Observable.Select(GetObservableDescription); }
+        }
+        public ISubject<bool> Subject
+        {
+            get { return _subject; }
+        }
+        public IObservable<string> SubjectDescription
+        {
+            get { return Subject.Select(GetSubjectDescription); }
+        }
+        public object TestTestDataTemplateDataSource
+        {
+            get { return new TestDataTemplateViewModel(Observable); }
+        }
+        public TestParentDataSourceViewModel TestParentDataSource
+        {
+            get { return _testParentDataSource; }
+            set { _testParentDataSource = value; OnPropertyChanged(); }
+        }
+        public IObservable<TestParentObservableDataSourceViewModel> TestParentObservableDataSource
+        {
+            get { return System.Reactive.Linq.Observable.Return(new TestParentObservableDataSourceViewModel(Observable)).Delay(TimeSpan.FromSeconds(1)); }
         }
 
-        public ISubject<bool> IsWorking2
+        private static IObservable<long> OncePerSecond()
         {
-            get { return _isWorking2; }
+            return System.Reactive.Linq.Observable.Interval(TimeSpan.FromSeconds(1));
         }
 
-        public IObservable<string> IsWorkingDescription
+        private static DateTime GetTime(long time)
         {
-            get { return IsWorking.Select(v => 
-                string.Format("IsWorking is {0}", v)); }
+            return DateTime.Now;
         }
 
-        public IObservable<string> IsWorking2Description
+        private static bool AreSecondsOdd(DateTime time)
         {
-            get { return IsWorking2.Select(v => 
-                string.Format("IsWorking2 is {0}", v)); }
+            return DateTime.Now.TimeOfDay.Seconds % 2 == 1;
+        }
+
+        private static string GetObservableDescription(bool value)
+        {
+            return string.Format("Observable value is '{0}'.", value);
+        }
+
+        private static string GetSubjectDescription(bool value)
+        {
+            return string.Format("Subject value is '{0}'.", value);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChangedEventHandler handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

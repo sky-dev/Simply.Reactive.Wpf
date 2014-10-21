@@ -1,21 +1,51 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using Simply.Reactive.Wpf.Monads;
 
 namespace Simply.Reactive.Wpf.Xaml
 {
     internal static class ReactiveBindingExpressions
     {
-        public static Func<object, DispatcherScheduler, Action<object>, IDisposable> CreateSubscribeMethod(object observable)
+        public delegate IDisposable Subscribe(object observable, DispatcherScheduler dispatcherScheduler, Action<object> onNext);
+        public delegate void OnNext(object observer, object value);
+
+        private static readonly ConcurrentDictionary<Type, Subscribe> SubscribeCache = new ConcurrentDictionary<Type, Subscribe>();
+        private static readonly ConcurrentDictionary<Type, OnNext> OnNextCache = new ConcurrentDictionary<Type, OnNext>();
+
+        public static IMaybe<Subscribe> GetSubscribe(object boundProperty)
+        {
+            return IsObservable(boundProperty) ? GetSubscribeMethod(boundProperty).ToMaybe() : Maybe<Subscribe>.Nothing;
+        }
+
+        public static bool IsObservable(object boundProperty)
+        {
+            return boundProperty != null && boundProperty.GetType().GetInterfaces().Any(i => i.Name.StartsWith("IObservable"));
+        }
+
+        public static Subscribe GetSubscribeMethod(object observable)
+        {
+            Subscribe subscribe;
+            var key = observable.GetType();
+            if (!SubscribeCache.TryGetValue(key, out subscribe))
+            {
+                subscribe = CreateSubscribeMethod(observable);
+                SubscribeCache[key] = subscribe;
+            }
+            return subscribe;
+        }
+
+        public static Subscribe CreateSubscribeMethod(object observable)
         {
             var observableType = observable.GetType();
             var observableParam = Expression.Parameter(typeof(object), "observable");
             var schedulerParam = Expression.Parameter(typeof(DispatcherScheduler), "scheduler");
             var onNextParam = Expression.Parameter(typeof(Action<Object>), "onNextWrapper");
             var subscribeMethodCall = CreateInnerSubscribeMethod(observableParam, schedulerParam, onNextParam, observableType);
-            return Expression.Lambda<Func<object, DispatcherScheduler, Action<object>, IDisposable>>(subscribeMethodCall, observableParam, schedulerParam, onNextParam).Compile();
+            return Expression.Lambda<Subscribe>(subscribeMethodCall, observableParam, schedulerParam, onNextParam).Compile();
         }
 
         private static Expression CreateInnerSubscribeMethod(Expression observableParam, Expression schedulerParam, Expression onNextParam, Type observableType)
@@ -37,13 +67,35 @@ namespace Simply.Reactive.Wpf.Xaml
                 .First();  
         }
 
-        public static Action<object, object> CreateOnNextMethod(object observer)
+        public static IMaybe<OnNext> GetOnNext(object boundProperty)
+        {
+            return IsObserver(boundProperty) ? GetOnNextMethod(boundProperty).ToMaybe() : Maybe<OnNext>.Nothing;
+        }
+
+        public static bool IsObserver(object boundProperty)
+        {
+            return boundProperty != null && boundProperty.GetType().GetInterfaces().Any(i => i.Name.StartsWith("IObserver"));
+        }
+
+        public static OnNext GetOnNextMethod(object observer)
+        {
+            OnNext onNext;
+            var key = observer.GetType();
+            if (!OnNextCache.TryGetValue(key, out onNext))
+            {
+                onNext = CreateOnNextMethod(observer);
+                OnNextCache[key] = onNext;
+            }
+            return onNext;
+        }
+
+        public static OnNext CreateOnNextMethod(object observer)
         {
             var observerType = observer.GetType();
             var observerParam = Expression.Parameter(typeof(object), "observer");
             var valueParam = Expression.Parameter(typeof(object), "value");
             var onNextMethodCall = CreateInnerOnNextMethod(observerParam, valueParam, observerType);
-            return Expression.Lambda<Action<object, object>>(onNextMethodCall, observerParam, valueParam).Compile();
+            return Expression.Lambda<OnNext>(onNextMethodCall, observerParam, valueParam).Compile();
         }
 
         private static Expression CreateInnerOnNextMethod(Expression observerParam, Expression valueParam, Type observerType)

@@ -11,7 +11,7 @@ namespace Simply.Reactive.Wpf.Xaml
     public class ReactiveBinding : MarkupExtension
     {
         private ReactiveBindingProxy _proxy;
-        private BindingExpressionBase _bindingInfo;
+        private FrameworkElement _frameworkElement;
 
         public object Source { get; set; }
         [ConstructorArgument("path")]
@@ -40,14 +40,30 @@ namespace Simply.Reactive.Wpf.Xaml
 
         public override object ProvideValue(IServiceProvider serviceProvider)
         {
-            var obj = GetUiElementBindingInfo(serviceProvider);
-            var uiElementBindingInfo = obj as UiElementBindingInfo;
-            if (uiElementBindingInfo == null)
-                return obj;
-            _proxy = new ReactiveBindingProxy(uiElementBindingInfo.Target, uiElementBindingInfo.DependencyProperty, GetBindingInfo());
-            var source = GetSource(uiElementBindingInfo); // TODO - assumes source is DataContext, not always the case
-            _bindingInfo = _proxy.BindTo(source, Path);
+            if (serviceProvider == null)
+                return this;
+            var bindingInfo = ReactiveBindingHelper.TryGetUiElementBindingInfo(this, serviceProvider);
+            if (!bindingInfo.HasValue)
+                return this;
+
+            AnchorReactiveBindingToControl(bindingInfo.Value.Target);
+
+            _proxy = new ReactiveBindingProxy(bindingInfo.Value.Target, bindingInfo.Value.DependencyProperty, GetBindingInfo());
+
             return _proxy.Value;
+        }
+
+        private void AnchorReactiveBindingToControl(DependencyObject target)
+        {
+            _frameworkElement = (FrameworkElement)target;
+            _frameworkElement.Unloaded += RemoveAnchor;
+        }
+
+        private void RemoveAnchor(object sender, RoutedEventArgs e)
+        {
+            // This subscription only exists to keep ReactiveBinding from being Finalized by the GarbageCollector
+            // Remove the subscription now that the control has been unloaded, and allow the ReactiveBinding to Finalize
+            _frameworkElement.Unloaded -= RemoveAnchor;
         }
 
         private Binding GetBindingInfo()
@@ -64,43 +80,6 @@ namespace Simply.Reactive.Wpf.Xaml
                 UpdateSourceTrigger = UpdateSourceTrigger,
                 StringFormat = StringFormat
             };
-        }
-
-        private static object GetSource(UiElementBindingInfo uiElementBindingInfo)
-        {
-            return ((FrameworkElement)uiElementBindingInfo.Target).DataContext;
-        }
-
-        private object GetUiElementBindingInfo(IServiceProvider serviceProvider)
-        {
-            var valueProvider = serviceProvider.GetService(typeof(IProvideValueTarget)) as IProvideValueTarget;
-            if (valueProvider == null)
-                return null;
-            if (valueProvider.TargetObject.GetType().FullName == "System.Windows.SharedDp")
-                return this;
-            var bindingTarget = valueProvider.TargetObject as DependencyObject;
-            var bindingTargetProperty = valueProvider.TargetProperty as DependencyProperty;
-            if (bindingTargetProperty == null || bindingTarget == null)
-            {
-                throw new NotSupportedException(string.Format(
-                    "The property '{0}' on target '{1}' is not valid for a {2}. The {2} target must be a DependencyObject, and the target property must be a DependencyProperty.",
-                    valueProvider.TargetProperty,
-                    valueProvider.TargetObject,
-                    GetType().Name));
-            }
-            return new UiElementBindingInfo(bindingTarget, bindingTargetProperty);
-        }
-
-        public class UiElementBindingInfo
-        {
-            public DependencyObject Target { get; private set; }
-            public DependencyProperty DependencyProperty { get; private set; }
-
-            public UiElementBindingInfo(DependencyObject bindingTarget, DependencyProperty dependencyProperty)
-            {
-                Target = bindingTarget;
-                DependencyProperty = dependencyProperty;
-            }
         }
     }
 }
