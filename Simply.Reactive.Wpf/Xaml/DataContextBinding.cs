@@ -2,6 +2,7 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -26,7 +27,7 @@ namespace Simply.Reactive.Wpf.Xaml
             _uiElementTarget = uiElementTarget;
             _uiElementDependencyProperty = uiElementDependencyProperty;
             _dataContexts.ObserveOn(DispatcherScheduler.Current).Subscribe(subscriber);
-            
+
 
             if (uiElementDependencyProperty.Name == "DataContext")
             {
@@ -63,11 +64,11 @@ namespace Simply.Reactive.Wpf.Xaml
                 if (_isDisposed)
                     return;
                 var binding = new Binding
-                    {
-                        Source = target,
-                        Path = new PropertyPath("DataContext"),
-                        Mode = BindingMode.OneWay
-                    };
+                {
+                    Source = target,
+                    Path = new PropertyPath("DataContext"),
+                    Mode = BindingMode.OneWay
+                };
                 _dataContextBinding = BindingOperations.SetBinding(this, DataContextProperty, binding);
             }
         }
@@ -102,7 +103,10 @@ namespace Simply.Reactive.Wpf.Xaml
             {
                 if (_dataContextBinding != null)
                 {
-                    Dispatcher.Invoke(() => BindingOperations.ClearBinding(this, DataContextProperty));
+                    if (Thread.CurrentThread.ManagedThreadId == Dispatcher.Thread.ManagedThreadId)
+                    {
+                        BindingOperations.ClearBinding(this, DataContextProperty);
+                    }
                 }
                 _dataContexts.Dispose();
                 if (_uiElement != null)
@@ -112,7 +116,7 @@ namespace Simply.Reactive.Wpf.Xaml
                 _uiElementTarget = null;
                 _uiElementDependencyProperty = null;
                 _uiElement = null;
-                _isDisposed = true; 
+                _isDisposed = true;
             }
         }
     }

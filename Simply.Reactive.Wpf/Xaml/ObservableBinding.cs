@@ -2,6 +2,7 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 
@@ -45,9 +46,12 @@ namespace Simply.Reactive.Wpf.Xaml
         {
             lock (_lock)
             {
-                Dispatcher.Invoke(() => BindingOperations.ClearBinding(this, ObservableProperty));
+                if (Thread.CurrentThread.ManagedThreadId == Dispatcher.Thread.ManagedThreadId)
+                {
+                    BindingOperations.ClearBinding(this, ObservableProperty);
+                }
                 _observables.Dispose();
-                _isDisposed = true;                 
+                _isDisposed = true;
             }
         }
     }
